@@ -41,3 +41,36 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub-cache/
+build/
+*.lock
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Android/iOS
+**/android/.gradle/
+**/ios/Flutter/
+**/ios/Pods/
+**/ios/Runner.xcodeproj/project.xcworkspace/
+**/ios/Runner.xcodeproj/xcuserdata/
+**/ios/Runner.xcworkspace/
+*.xcuserstate
+
+# Python (just in case)
+venv/
+__pycache__/
+*.pyc
+
+# Large files
+*.pyd
+*.dll
+*.so
+*.exe
