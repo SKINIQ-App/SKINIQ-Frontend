@@ -1,11 +1,11 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
-import 'package:meditation/screen/blogs/home_remedies.dart';
-import 'package:meditation/screen/blogs/climate_skin.dart';
-import 'package:meditation/screen/blogs/healthy_diet.dart';
-import 'package:meditation/screen/blogs/sunscreen_guide.dart';
-import 'package:meditation/screen/blogs/stay_hydrated.dart';
+import 'package:skiniq/screen/blogs/home_remedies.dart';
+import 'package:skiniq/screen/blogs/climate_skin.dart';
+import 'package:skiniq/screen/blogs/healthy_diet.dart';
+import 'package:skiniq/screen/blogs/sunscreen_guide.dart';
+import 'package:skiniq/screen/blogs/stay_hydrated.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

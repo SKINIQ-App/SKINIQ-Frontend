@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:meditation/common_widget/round_button.dart';
-import 'package:meditation/screen/home/selection_screen.dart';
+import 'package:skiniq/common_widget/round_button.dart';
+import 'package:skiniq/screen/home/selection_screen.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});

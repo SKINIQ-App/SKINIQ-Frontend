@@ -1,8 +1,8 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
-import 'package:meditation/screen/onboarding/onboarding_screen1.dart';
-import 'package:meditation/screen/onboarding/onboarding_screen2.dart';
+import 'package:skiniq/screen/onboarding/onboarding_screen1.dart';
+import 'package:skiniq/screen/onboarding/onboarding_screen2.dart';
 
 class SelectionScreen extends StatelessWidget {
   const SelectionScreen({super.key});

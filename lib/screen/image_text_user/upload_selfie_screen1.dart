@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:camera/camera.dart';
-import 'package:meditation/screen/image_text_user/skin_description_screen.dart';
+import 'package:skiniq/screen/image_text_user/skin_description_screen.dart';
 
 class UploadSelfieScreen1 extends StatefulWidget {
   const UploadSelfieScreen1({super.key});

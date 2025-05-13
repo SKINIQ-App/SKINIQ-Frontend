@@ -1,9 +1,9 @@
 // forgot_password_screen.dart
 import 'package:flutter/material.dart';
-import 'package:meditation/common/color_extension.dart';
-import 'package:meditation/common_widget/round_button.dart';
-import 'package:meditation/common_widget/round_text_field.dart';
-import 'package:meditation/services/auth_service.dart';
+import 'package:skiniq/common/color_extension.dart';
+import 'package:skiniq/common_widget/round_button.dart';
+import 'package:skiniq/common_widget/round_text_field.dart';
+import 'package:skiniq/services/auth_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});

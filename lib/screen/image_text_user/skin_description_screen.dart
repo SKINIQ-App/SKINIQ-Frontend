@@ -1,7 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
-import 'package:meditation/screen/main_tabview/main_tabview_screen.dart';
+import 'package:skiniq/screen/main_tabview/main_tabview_screen.dart';
 
 class SkinDescriptionScreen extends StatefulWidget {
   const SkinDescriptionScreen({super.key});
@@ -219,4 +219,3 @@ class _SkinDescriptionScreenState extends State<SkinDescriptionScreen> {
     }
   }
 }
-

@@ -1,9 +1,9 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
-import 'package:meditation/screen/diary/diary_screen.dart';
-import 'package:meditation/screen/home/home_screen.dart';
-import 'package:meditation/screen/profile/profile_screen.dart';
+import 'package:skiniq/screen/diary/diary_screen.dart';
+import 'package:skiniq/screen/home/home_screen.dart';
+import 'package:skiniq/screen/profile/profile_screen.dart';
 
 class MainTabViewScreen extends StatefulWidget {
   const MainTabViewScreen({super.key});

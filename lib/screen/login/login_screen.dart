@@ -1,12 +1,12 @@
 // login_screen.dart (complete file with fixes)
 import 'package:flutter/material.dart';
-import 'package:meditation/common/color_extension.dart';
-import 'package:meditation/common_widget/round_button.dart';
-import 'package:meditation/common_widget/round_text_field.dart';
-import 'package:meditation/screen/login/forgot_password_screen.dart';
-import 'package:meditation/screen/login/sign_up_screen.dart';
-import 'package:meditation/screen/main_tabview/main_tabview_screen.dart';
-import 'package:meditation/services/auth_service.dart';
+import 'package:skiniq/common/color_extension.dart';
+import 'package:skiniq/common_widget/round_button.dart';
+import 'package:skiniq/common_widget/round_text_field.dart';
+import 'package:skiniq/screen/login/forgot_password_screen.dart';
+import 'package:skiniq/screen/login/sign_up_screen.dart';
+import 'package:skiniq/screen/main_tabview/main_tabview_screen.dart';
+import 'package:skiniq/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
