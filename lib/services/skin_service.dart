@@ -2,39 +2,43 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
-import 'api_service.dart';
+import 'package:skiniq/services/api_service.dart';
 
 class SkinService {
-  static Future<Map<String, dynamic>> predictSkinIssues(String symptoms) async {
-    final response = await ApiService.post('/skin/predict_skin_issues', {'symptoms': symptoms});
-    return jsonDecode(response.body);
-  }
+  static Future<Map<String, dynamic>> predictSkinType(String username, File image) async {
+    try {
+      var request = http.MultipartRequest('POST', Uri.parse('${ApiService.baseUrl}/skin/analyze?username=$username'));
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          image.path,
+          contentType: MediaType('image', 'jpeg'),
+        ),
+      );
 
-  static Future<Map<String, dynamic>> predictSkinType(File imageFile) async {
-    var url = Uri.parse('${ApiService.baseUrl}/skin/analyze?username=${Uri.encodeComponent(imageFile.path)}');
-    var request = http.MultipartRequest('POST', url);
-    request.files.add(await http.MultipartFile.fromPath(
-      'file',
-      imageFile.path,
-      contentType: MediaType('image', 'jpeg'),
-    ));
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
 
-    var streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception("Skin type prediction failed: ${response.body}");
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to analyze skin: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error during skin analysis: $e');
     }
   }
 
   static Future<Map<String, dynamic>> submitQuestionnaire(Map<String, dynamic> skinDetails) async {
-    final response = await ApiService.post('/skin/questionnaire', skinDetails);
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception("Questionnaire submission failed: ${response.body}");
+    try {
+      final response = await ApiService.post('/skin/questionnaire', skinDetails);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to submit questionnaire: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error submitting questionnaire: $e');
     }
   }
 }

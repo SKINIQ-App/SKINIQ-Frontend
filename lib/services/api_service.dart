@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_print
-
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -13,7 +11,7 @@ class ApiService {
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(data),
-      ).timeout(const Duration(seconds: 8), onTimeout: () {
+      ).timeout(const Duration(seconds: 15), onTimeout: () { // Increased timeout
         throw Exception('Server timeout. Try again.');
       });
       print('POST $url: Status ${response.statusCode}');
@@ -30,7 +28,7 @@ class ApiService {
       final response = await http.get(
         Uri.parse(url),
         headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 8), onTimeout: () {
+      ).timeout(const Duration(seconds: 15), onTimeout: () { // Increased timeout
         throw Exception('Server timeout. Try again.');
       });
       print('GET $url: Status ${response.statusCode}');
