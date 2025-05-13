@@ -46,7 +46,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
 
     // Check EXIF orientation and rotate if needed
     final exif = image.exif;
-    final orientationTag = exif?.getTag(0x0112); // Get the orientation tag
+    final orientationTag = exif.getTag(0x0112); // Get the orientation tag
     final orientation = orientationTag?.toInt() ?? 1; // Use toInt() to get the value, default to 1 if null
     img.Image rotatedImage = image;
 
