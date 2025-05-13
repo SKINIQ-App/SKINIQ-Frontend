@@ -12,7 +12,7 @@ class ProfileService {
   static Future<void> updateRoutine(String userId, List<String> routineSteps) async {
     await ApiService.post('/update_routine', {
       'user_id': userId,
-      'routine': routineSteps.join(','), // assumed this format is handled by your FastAPI backend
+      'routine': routineSteps.join(','),
     });
   }
 
@@ -24,9 +24,9 @@ class ProfileService {
       );
       request.files.add(await http.MultipartFile.fromPath('file', image.path));
       var response = await request.send();
-
       if (response.statusCode != 200) {
-        throw Exception('Failed to update profile picture: ${response.statusCode}');
+        final responseBody = await response.stream.bytesToString();
+        throw Exception('Failed to update profile picture: ${response.statusCode}, $responseBody');
       }
     } catch (e) {
       throw Exception('Error updating profile picture: $e');

@@ -1,10 +1,11 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'package:flutter_exif_rotation/flutter_exif_rotation.dart';
+import 'package:image/image.dart' as img;
 import 'package:table_calendar/table_calendar.dart';
 import 'dart:io';
 import 'package:skiniq/services/diary_service.dart';
+import 'package:logger/logger.dart'; // Added for logging
 
 class DiaryScreen extends StatefulWidget {
   final String username;
@@ -24,6 +25,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
   CameraDescription? selectedCamera;
   bool _isSaving = false;
   Map<DateTime, List<Map<String, dynamic>>> _diaryEntries = {};
+  final _logger = Logger(); // Logger instance
 
   @override
   void initState() {
@@ -57,6 +59,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
         }
       });
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to load diary entries: ${e.toString()}")),
       );
@@ -64,10 +67,40 @@ class _DiaryScreenState extends State<DiaryScreen> {
   }
 
   Future<File> _fixImageRotation(File imageFile) async {
-    print('Rotating image: ${imageFile.path}');
-    final rotatedImage = await FlutterExifRotation.rotateImage(path: imageFile.path);
-    print('Image rotated: ${rotatedImage.path}');
-    return rotatedImage;
+    _logger.i('Fixing image orientation: ${imageFile.path}');
+    final bytes = await imageFile.readAsBytes();
+    final image = img.decodeImage(bytes);
+    if (image == null) {
+      _logger.e('Failed to decode image');
+      return imageFile;
+    }
+
+    final exif = image.exif;
+    int orientation = 1;
+    if (exif.containsKey('Orientation')) {
+      final orientationValue = exif['Orientation'];
+      if (orientationValue != null && orientationValue.values.isNotEmpty) {
+        orientation = orientationValue.values.first as int? ?? 1;
+      }
+    }
+
+    img.Image rotatedImage = image;
+    switch (orientation) {
+      case 3:
+        rotatedImage = img.copyRotate(image, angle: 180);
+        break;
+      case 6:
+        rotatedImage = img.copyRotate(image, angle: 90);
+        break;
+      case 8:
+        rotatedImage = img.copyRotate(image, angle: -90);
+        break;
+    }
+
+    final rotatedFile = File('${imageFile.path}_rotated.jpg')
+      ..writeAsBytesSync(img.encodeJpg(rotatedImage));
+    _logger.i('Image orientation fixed: ${rotatedFile.path}');
+    return rotatedFile;
   }
 
   Future<void> _pickImages() async {
@@ -106,6 +139,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
 
   Future<void> _saveEntry() async {
     if (_images.isEmpty && _textController.text.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please add at least one image or description")),
       );
@@ -121,8 +155,9 @@ class _DiaryScreenState extends State<DiaryScreen> {
         widget.username,
         _images,
         _textController.text,
-        _selectedDay.toIso8601String().split('T')[0], // Format: YYYY-MM-DD
+        _selectedDay.toIso8601String().split('T')[0],
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Diary entry saved successfully")),
       );
@@ -130,8 +165,9 @@ class _DiaryScreenState extends State<DiaryScreen> {
         _images.clear();
         _textController.clear();
       });
-      await _fetchDiaryEntries(); // Refresh diary entries for date marking
+      await _fetchDiaryEntries();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to save diary entry: ${e.toString()}")),
       );
@@ -184,7 +220,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                       const SizedBox(height: 20),
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.95),
+                          color: const Color.fromRGBO(255, 255, 255, 0.95),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
@@ -248,7 +284,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                         height: 200,
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.95),
+                          color: const Color.fromRGBO(255, 255, 255, 0.95),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
@@ -337,8 +373,10 @@ class _DiaryScreenState extends State<DiaryScreen> {
                       ),
                       const SizedBox(height: 20),
                       Container(
+                        height: 200, // Fixed height to match image section
+                        width: double.infinity,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.95),
+                          color: const Color.fromRGBO(255, 255, 255, 0.95),
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
@@ -362,15 +400,19 @@ class _DiaryScreenState extends State<DiaryScreen> {
                                 ),
                               ),
                             ),
-                            TextField(
-                              controller: _textController,
-                              maxLines: 5,
-                              decoration: InputDecoration(
-                                hintText: "Write about your skin changes...",
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.all(16),
+                            Expanded(
+                              child: TextField(
+                                controller: _textController,
+                                maxLines: null,
+                                expands: true,
+                                textAlignVertical: TextAlignVertical.top,
+                                decoration: InputDecoration(
+                                  hintText: "Write about your skin changes...",
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.all(16),
+                                ),
+                                style: const TextStyle(fontSize: 16),
                               ),
-                              style: const TextStyle(fontSize: 16),
                             ),
                           ],
                         ),
@@ -381,7 +423,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                           padding: const EdgeInsets.all(16),
                           margin: const EdgeInsets.only(bottom: 16),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.95),
+                            color: const Color.fromRGBO(255, 255, 255, 0.95),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
@@ -444,6 +486,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
   late Future<void> _initializeControllerFuture;
   late List<CameraDescription> _cameras;
   late int _selectedCameraIndex;
+  final _logger = Logger(); // Logger instance
 
   @override
   void initState() {
@@ -485,8 +528,11 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
       await _initializeControllerFuture;
       final image = await _controller.takePicture();
       widget.onImageCaptured(File(image.path));
+      if (!mounted) return;
       Navigator.pop(context, File(image.path));
     } catch (e) {
+      if (!mounted) return;
+      _logger.e("Failed to capture image: ${e.toString()}");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to capture image: ${e.toString()}")),
       );

@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:camera/camera.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter_exif_rotation/flutter_exif_rotation.dart';
+import 'package:image/image.dart' as img;
 import 'package:skiniq/services/profile_service.dart';
+import 'package:logger/logger.dart'; // Added for logging
 
 class ProfileScreen extends StatefulWidget {
   final String username;
@@ -18,11 +19,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   File? _profileImage;
   Map<String, dynamic>? _userProfile;
   bool _isLoading = true;
+  List<CameraDescription>? cameras;
+  CameraDescription? selectedCamera;
+  final _logger = Logger(); // Logger instance
 
   @override
   void initState() {
     super.initState();
+    _initializeCameras();
     _fetchProfile();
+  }
+
+  Future<void> _initializeCameras() async {
+    cameras = await availableCameras();
+    setState(() {
+      selectedCamera = cameras!.firstWhere(
+        (camera) => camera.lensDirection == CameraLensDirection.back,
+        orElse: () => cameras!.first,
+      );
+    });
   }
 
   Future<void> _fetchProfile() async {
@@ -36,6 +51,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _isLoading = false;
       });
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to load profile: ${e.toString()}")),
       );
@@ -43,8 +59,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<File> _fixImageRotation(File imageFile) async {
-    final rotatedImage = await FlutterExifRotation.rotateImage(path: imageFile.path);
-    return rotatedImage;
+    _logger.i('Fixing image orientation: ${imageFile.path}');
+    final bytes = await imageFile.readAsBytes();
+    final image = img.decodeImage(bytes);
+    if (image == null) {
+      _logger.e('Failed to decode image');
+      return imageFile;
+    }
+
+    final exif = image.exif;
+    // Check EXIF orientation (using string key 'Orientation')
+    int orientation = 1;
+    if (exif.containsKey('Orientation')) {
+      final orientationValue = exif['Orientation'];
+      if (orientationValue.values.isNotEmpty) {
+        orientation = orientationValue.values.first as int? ?? 1;
+      }
+    }
+
+    img.Image rotatedImage = image;
+    switch (orientation) {
+      case 3:
+        rotatedImage = img.copyRotate(image, angle: 180);
+        break;
+      case 6:
+        rotatedImage = img.copyRotate(image, angle: 90);
+        break;
+      case 8:
+        rotatedImage = img.copyRotate(image, angle: -90);
+        break;
+    }
+
+    final rotatedFile = File('${imageFile.path}_rotated.jpg')
+      ..writeAsBytesSync(img.encodeJpg(rotatedImage));
+    _logger.i('Image orientation fixed: ${rotatedFile.path}');
+    return rotatedFile;
+  }
+
+  Future<File?> _cropImage(File imageFile) async {
+    final bytes = await imageFile.readAsBytes();
+    final image = img.decodeImage(bytes);
+    if (image == null) return null;
+
+    final isVertical = image.height > image.width;
+    final size = isVertical ? image.width : image.height;
+    final x = isVertical ? 0 : (image.width - size) ~/ 2;
+    final y = isVertical ? (image.height - size) ~/ 2 : 0;
+
+    final croppedImage = img.copyCrop(image, x: x, y: y, width: size, height: size);
+    final croppedFile = File('${imageFile.path}_cropped.jpg')
+      ..writeAsBytesSync(img.encodeJpg(croppedImage));
+    return croppedFile;
   }
 
   void _showImageSourceActionSheet(BuildContext context) {
@@ -86,22 +151,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (result != null) {
       File imageFile = File(result.files.single.path!);
       imageFile = await _fixImageRotation(imageFile);
-      setState(() {
-        _profileImage = imageFile;
-      });
-      await _uploadProfilePicture(imageFile);
+      final croppedImage = await _cropImage(imageFile);
+      if (croppedImage != null) {
+        setState(() {
+          _profileImage = croppedImage;
+        });
+        await _uploadProfilePicture(croppedImage);
+      }
     }
   }
 
   Future<void> _captureImage() async {
-    final cameras = await availableCameras();
-    final firstCamera = cameras.first;
+    if (selectedCamera == null) return;
 
     final File? capturedImage = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CameraPreviewScreen(
-          camera: firstCamera,
+          initialCamera: selectedCamera!,
           onImageCaptured: (File image) {},
         ),
       ),
@@ -109,10 +176,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (capturedImage != null) {
       File imageFile = await _fixImageRotation(capturedImage);
-      setState(() {
-        _profileImage = imageFile;
-      });
-      await _uploadProfilePicture(imageFile);
+      final croppedImage = await _cropImage(imageFile);
+      if (croppedImage != null) {
+        setState(() {
+          _profileImage = croppedImage;
+        });
+        await _uploadProfilePicture(croppedImage);
+      }
     }
   }
 
@@ -120,6 +190,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       await ProfileService.updateProfilePicture(widget.username, image);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to upload profile picture: ${e.toString()}")),
       );
@@ -135,29 +206,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Image.asset(
               "assets/img/Background1.png",
               fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
             ),
           ),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHeader(context),
-                        const SizedBox(height: 25),
-                        _buildUserProfile(context),
-                        const SizedBox(height: 30),
-                        _buildRoutineSection(
-                          "Daily Routine",
-                          FontAwesomeIcons.sun,
-                          Colors.orangeAccent,
-                          _userProfile?['recommended_routine'] ?? [],
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeader(context),
+                            const SizedBox(height: 25),
+                            _buildUserProfile(context),
+                            const SizedBox(height: 30),
+                            _buildRoutineSection(
+                              "Daily Routine",
+                              FontAwesomeIcons.sun,
+                              Colors.orangeAccent,
+                              _userProfile?['recommended_routine'] ?? [],
+                            ),
+                            const SizedBox(height: 20),
+                          ],
                         ),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
+                ),
+              ),
             ),
           ),
         ],
@@ -246,7 +326,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 18),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95),
+              color: const Color.fromRGBO(255, 255, 255, 0.95), // Replaced withOpacity
               borderRadius: BorderRadius.circular(20),
               boxShadow: const [
                 BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
@@ -271,7 +351,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
+        color: const Color.fromRGBO(255, 255, 255, 0.95), // Replaced withOpacity
         borderRadius: BorderRadius.circular(18),
         boxShadow: const [
           BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
@@ -335,12 +415,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class CameraPreviewScreen extends StatefulWidget {
-  final CameraDescription camera;
+  final CameraDescription initialCamera;
   final Function(File) onImageCaptured;
 
   const CameraPreviewScreen({
     super.key,
-    required this.camera,
+    required this.initialCamera,
     required this.onImageCaptured,
   });
 
@@ -351,15 +431,37 @@ class CameraPreviewScreen extends StatefulWidget {
 class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
   late CameraController _controller;
   late Future<void> _initializeControllerFuture;
+  late List<CameraDescription> _cameras;
+  late int _selectedCameraIndex;
+  final _logger = Logger(); // Logger instance
 
   @override
   void initState() {
     super.initState();
+    _initializeCameras();
+  }
+
+  Future<void> _initializeCameras() async {
+    _cameras = await availableCameras();
+    _selectedCameraIndex = _cameras.indexWhere((camera) => camera == widget.initialCamera);
+    if (_selectedCameraIndex == -1) _selectedCameraIndex = 0;
     _controller = CameraController(
-      widget.camera,
+      _cameras[_selectedCameraIndex],
       ResolutionPreset.medium,
     );
     _initializeControllerFuture = _controller.initialize();
+    setState(() {});
+  }
+
+  Future<void> _switchCamera() async {
+    _selectedCameraIndex = (_selectedCameraIndex + 1) % _cameras.length;
+    await _controller.dispose();
+    _controller = CameraController(
+      _cameras[_selectedCameraIndex],
+      ResolutionPreset.medium,
+    );
+    _initializeControllerFuture = _controller.initialize();
+    setState(() {});
   }
 
   @override
@@ -373,8 +475,11 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
       await _initializeControllerFuture;
       final image = await _controller.takePicture();
       widget.onImageCaptured(File(image.path));
+      if (!mounted) return;
       Navigator.pop(context, File(image.path));
     } catch (e) {
+      if (!mounted) return;
+      _logger.e("Failed to capture image: ${e.toString()}");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to capture image: ${e.toString()}")),
       );
@@ -395,10 +500,21 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
                   alignment: Alignment.bottomCenter,
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
-                    child: FloatingActionButton(
-                      onPressed: _captureImage,
-                      backgroundColor: const Color.fromARGB(255, 198, 232, 189),
-                      child: const Icon(Icons.camera, color: Colors.black),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        FloatingActionButton(
+                          onPressed: _switchCamera,
+                          backgroundColor: const Color.fromARGB(255, 198, 232, 189),
+                          child: const Icon(Icons.flip_camera_ios, color: Colors.black),
+                        ),
+                        const SizedBox(width: 20),
+                        FloatingActionButton(
+                          onPressed: _captureImage,
+                          backgroundColor: const Color.fromARGB(255, 198, 232, 189),
+                          child: const Icon(Icons.camera, color: Colors.black),
+                        ),
+                      ],
                     ),
                   ),
                 ),

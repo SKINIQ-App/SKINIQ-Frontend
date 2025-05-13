@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter_exif_rotation/flutter_exif_rotation.dart';
+import 'package:image/image.dart' as img;
 import 'package:skiniq/screen/image_text_user/skin_description_screen.dart';
 import 'package:skiniq/services/skin_service.dart';
+import 'package:logger/logger.dart'; // Added for logging
 
 class UploadSelfieScreen1 extends StatefulWidget {
   final String username;
@@ -20,6 +21,7 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
   CameraDescription? selectedCamera;
   bool isFrontCamera = false;
   bool _isUploading = false;
+  final _logger = Logger(); // Logger instance
 
   @override
   void initState() {
@@ -48,8 +50,40 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
   }
 
   Future<File> _fixImageRotation(File imageFile) async {
-    final rotatedImage = await FlutterExifRotation.rotateImage(path: imageFile.path);
-    return rotatedImage;
+    _logger.i('Fixing image orientation: ${imageFile.path}');
+    final bytes = await imageFile.readAsBytes();
+    final image = img.decodeImage(bytes);
+    if (image == null) {
+      _logger.e('Failed to decode image');
+      return imageFile;
+    }
+
+    final exif = image.exif;
+    int orientation = 1;
+    if (exif.containsKey('Orientation')) {
+      final orientationValue = exif['Orientation'];
+      if (orientationValue != null && orientationValue.values.isNotEmpty) {
+        orientation = orientationValue.values.first as int? ?? 1;
+      }
+    }
+
+    img.Image rotatedImage = image;
+    switch (orientation) {
+      case 3:
+        rotatedImage = img.copyRotate(image, angle: 180);
+        break;
+      case 6:
+        rotatedImage = img.copyRotate(image, angle: 90);
+        break;
+      case 8:
+        rotatedImage = img.copyRotate(image, angle: -90);
+        break;
+    }
+
+    final rotatedFile = File('${imageFile.path}_rotated.jpg')
+      ..writeAsBytesSync(img.encodeJpg(rotatedImage));
+    _logger.i('Image orientation fixed: ${rotatedFile.path}');
+    return rotatedFile;
   }
 
   Future<void> _pickImage() async {
@@ -90,8 +124,9 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
       _isUploading = true;
     });
     try {
-      print('Uploading selfie for username: ${widget.username}'); // Debug print
+      _logger.i('Uploading selfie for username: ${widget.username}');
       await SkinService.predictSkinType(widget.username, _image!);
+      if (!mounted) return;
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -99,6 +134,7 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to analyze skin: ${e.toString()}")),
       );
@@ -243,6 +279,7 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
                                 if (_image != null) {
                                   await _uploadSelfie();
                                 } else {
+                                  if (!mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(content: Text("Please upload or capture a photo!")),
                                   );
@@ -291,6 +328,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
   late Future<void> _initializeControllerFuture;
   late List<CameraDescription> _cameras;
   late int _selectedCameraIndex;
+  final _logger = Logger(); // Logger instance
 
   @override
   void initState() {
@@ -332,8 +370,11 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
       await _initializeControllerFuture;
       final image = await _controller.takePicture();
       widget.onImageCaptured(File(image.path));
+      if (!mounted) return;
       Navigator.pop(context, File(image.path));
     } catch (e) {
+      if (!mounted) return;
+      _logger.e("Failed to capture image: ${e.toString()}");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to capture image: ${e.toString()}")),
       );

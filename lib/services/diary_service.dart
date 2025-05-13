@@ -12,17 +12,18 @@ class DiaryService {
     String date,
   ) async {
     try {
-      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/diary/entry'));
+      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/diary_entry')); // Changed to match backend
       request.fields['username'] = username;
       request.fields['date'] = date;
       request.fields['text'] = text;
       for (var image in images) {
-        request.files.add(await http.MultipartFile.fromPath('photos', image.path));
+        request.files.add(await http.MultipartFile.fromPath('file', image.path)); // Changed 'photos' to 'file'
       }
 
       var response = await request.send();
       if (response.statusCode != 200) {
-        throw Exception('Failed to save diary entry: ${response.statusCode}');
+        final responseBody = await response.stream.bytesToString();
+        throw Exception('Failed to save diary entry: ${response.statusCode}, $responseBody');
       }
     } catch (e) {
       throw Exception('Error saving diary entry: $e');
