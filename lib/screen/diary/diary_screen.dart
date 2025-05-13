@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:skiniq/services/diary_service.dart'; // Import DiaryService
 
 class DiaryScreen extends StatefulWidget {
-  const DiaryScreen({super.key});
+  final String username; // Add username parameter
+  const DiaryScreen({super.key, required this.username});
 
   @override
   State<DiaryScreen> createState() => _DiaryScreenState();
@@ -26,28 +28,52 @@ class _DiaryScreenState extends State<DiaryScreen> {
     }
   }
 
+  Future<void> _saveEntry() async {
+    if (_image == null && _textController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please add an image or description")),
+      );
+      return;
+    }
+
+    try {
+      await DiaryService.uploadDiaryEntry(
+        widget.username,
+        _image!,
+        _textController.text,
+        _selectedDay.toIso8601String(),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Diary entry saved successfully")),
+      );
+      setState(() {
+        _image = null;
+        _textController.clear();
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to save diary entry: ${e.toString()}")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          // Background Image
           Positioned.fill(
             child: Image.asset(
-              "assets/img/Background1.png", // Replace with your actual background image path
+              "assets/img/Background1.png",
               fit: BoxFit.cover,
             ),
           ),
-          
-          // Content
           SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 50), // Adjust space for AppBar
-                
-                // Title
+                const SizedBox(height: 50),
                 const Text(
                   "Skin Diary",
                   style: TextStyle(
@@ -56,13 +82,9 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     color: Colors.white,
                   ),
                 ),
-                
                 const SizedBox(height: 20),
-
-                // Calendar
                 Container(
                   decoration: BoxDecoration(
-                    // ignore: deprecated_member_use
                     color: Colors.white.withOpacity(0.9),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
@@ -99,15 +121,11 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
-                // Image Preview Box
                 Container(
                   height: 200,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    // ignore: deprecated_member_use
                     color: Colors.white.withOpacity(0.9),
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
@@ -135,10 +153,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                           ),
                         ),
                 ),
-
                 const SizedBox(height: 16),
-
-                // Upload Image Button
                 ElevatedButton.icon(
                   onPressed: _pickImage,
                   icon: const Icon(Icons.upload, color: Colors.white),
@@ -152,10 +167,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     textStyle: const TextStyle(fontSize: 16),
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
-                // Text Entry Box
                 TextField(
                   controller: _textController,
                   maxLines: 5,
@@ -164,17 +176,13 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    // ignore: deprecated_member_use
                     fillColor: Colors.white.withOpacity(0.9),
                     filled: true,
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
-                // Save Entry Button
                 ElevatedButton.icon(
-                  onPressed: () {}, // Add save functionality
+                  onPressed: _saveEntry,
                   icon: const Icon(Icons.save, color: Colors.white),
                   label: const Text("Save Entry"),
                   style: ElevatedButton.styleFrom(
@@ -186,7 +194,6 @@ class _DiaryScreenState extends State<DiaryScreen> {
                     textStyle: const TextStyle(fontSize: 16),
                   ),
                 ),
-
                 const SizedBox(height: 50),
               ],
             ),

@@ -23,7 +23,7 @@ class AuthService {
     }
   }
 
-  static Future<void> login(String email, String password) async {
+  static Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await ApiService.post('/auth/login', {
         'email': email,
@@ -33,6 +33,8 @@ class AuthService {
         final errorBody = jsonDecode(response.body);
         throw Exception('Login failed: ${errorBody['detail'] ?? response.body}');
       }
+      final responseBody = jsonDecode(response.body);
+      return responseBody; // Return the response containing username and email
     } catch (e) {
       print('Login error: $e');
       throw Exception('Login failed: ${e.toString()}');

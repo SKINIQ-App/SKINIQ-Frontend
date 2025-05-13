@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:camera/camera.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:skiniq/services/profile_service.dart'; // Import ProfileService
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final String username; // Add username parameter
+  const ProfileScreen({super.key, required this.username});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -15,6 +17,31 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   File? _profileImage;
+  Map<String, dynamic>? _userProfile;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final profile = await ProfileService.getProfile(widget.username);
+      setState(() {
+        _userProfile = profile;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to load profile: ${e.toString()}")),
+      );
+    }
+  }
 
   void _showImageSourceActionSheet(BuildContext context) {
     showModalBottomSheet(
@@ -88,16 +115,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(context),
-                  const SizedBox(height: 25),
-                  _buildUserProfile(context),
-                  const SizedBox(height: 30),
-                  _buildRoutineSection("Daily Routine", FontAwesomeIcons.sun, Colors.orangeAccent),
-                ],
-              ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHeader(context),
+                        const SizedBox(height: 25),
+                        _buildUserProfile(context),
+                        const SizedBox(height: 30),
+                        _buildRoutineSection(
+                          "Daily Routine",
+                          FontAwesomeIcons.sun,
+                          Colors.orangeAccent,
+                          _userProfile?['recommended_routine'] ?? [],
+                        ),
+                      ],
+                    ),
             ),
           ),
         ],
@@ -143,7 +177,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 radius: 50,
                 backgroundImage: _profileImage != null
                     ? FileImage(_profileImage!)
-                    : const AssetImage("assets/img/user_image.jpg") as ImageProvider,
+                    : _userProfile?['profile_image'] != null
+                        ? NetworkImage(_userProfile!['profile_image'])
+                        : const AssetImage("assets/img/user_image.jpg") as ImageProvider,
               ),
               Positioned(
                 bottom: 0,
@@ -163,9 +199,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          const Text(
-            "Hello, User!",
-            style: TextStyle(
+          Text(
+            "Hello, ${_userProfile?['username'] ?? 'User'}!",
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: Colors.white,
@@ -178,9 +214,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: Colors.white.withOpacity(0.9),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text(
-              "Skin Type: Combination",
-              style: TextStyle(
+            child: Text(
+              "Skin Type: ${_userProfile?['predicted_skin_type'] ?? 'Unknown'}",
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
                 color: Colors.black87,
@@ -192,7 +228,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildRoutineSection(String title, IconData icon, Color color) {
+  Widget _buildRoutineSection(String title, IconData icon, Color color, List<dynamic> routine) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -217,16 +253,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 15),
-          Center(
-            child: Text(
-              "No routine available",
-              style: TextStyle(
-                fontSize: 16,
-                fontStyle: FontStyle.italic,
-                color: Colors.grey[700],
-              ),
-            ),
-          ),
+          routine.isEmpty
+              ? Center(
+                  child: Text(
+                    "No routine available",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontStyle: FontStyle.italic,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                )
+              : Column(
+                  children: routine.map((step) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      "• $step",
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  )).toList(),
+                ),
         ],
       ),
     );

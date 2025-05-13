@@ -6,7 +6,8 @@ import 'package:skiniq/screen/home/home_screen.dart';
 import 'package:skiniq/screen/profile/profile_screen.dart';
 
 class MainTabViewScreen extends StatefulWidget {
-  const MainTabViewScreen({super.key});
+  final String username; // Add username parameter
+  const MainTabViewScreen({super.key, required this.username});
 
   @override
   State<MainTabViewScreen> createState() => _MainTabViewScreenState();
@@ -32,15 +33,12 @@ class _MainTabViewScreenState extends State<MainTabViewScreen> with SingleTicker
     return Scaffold(
       body: Stack(
         children: [
-          // Soft pastel background image
           Positioned.fill(
             child: Image.asset(
               "assets/img/Background1.png",
               fit: BoxFit.cover,
             ),
           ),
-          
-          // Tab View Content with a soft overlay for better readability
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -52,10 +50,10 @@ class _MainTabViewScreenState extends State<MainTabViewScreen> with SingleTicker
               ),
               child: TabBarView(
                 controller: controller,
-                children: const [
-                  HomeScreen(),
-                  DiaryScreen(),
-                  ProfileScreen(),
+                children: [
+                  const HomeScreen(),
+                  DiaryScreen(username: widget.username), // Pass username
+                  ProfileScreen(username: widget.username), // Pass username
                 ],
               ),
             ),

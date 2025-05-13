@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:camera/camera.dart';
 import 'package:skiniq/screen/image_text_user/skin_description_screen.dart';
+import 'package:skiniq/services/skin_service.dart'; // Import SkinService
 
 class UploadSelfieScreen1 extends StatefulWidget {
-  const UploadSelfieScreen1({super.key});
+  final String username; // Add username parameter
+  const UploadSelfieScreen1({super.key, required this.username});
 
   @override
   State<UploadSelfieScreen1> createState() => _UploadSelfieScreenState();
@@ -14,7 +16,6 @@ class UploadSelfieScreen1 extends StatefulWidget {
 class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
   File? _image;
 
-  /// Function to pick image from gallery
   Future<void> _pickImage() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
     if (result != null) {
@@ -24,7 +25,6 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
     }
   }
 
-  /// Function to capture image using Camera
   Future<void> _captureImage() async {
     final cameras = await availableCameras();
     final firstCamera = cameras.first;
@@ -32,8 +32,7 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
     final cameraController = CameraController(firstCamera, ResolutionPreset.medium);
     await cameraController.initialize();
 
-
-    final image =  await cameraController.takePicture();
+    final image = await cameraController.takePicture();
     setState(() {
       _image = File(image.path);
     });
@@ -41,20 +40,30 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
     await cameraController.dispose();
   }
 
+  Future<void> _uploadSelfie() async {
+    if (_image == null) return;
+    try {
+      // Call /skin/analyze endpoint
+      await SkinService.predictSkinType(_image!);
+      // The backend will store the skin type for the user
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to analyze skin: ${e.toString()}")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          /// Background Image
           Positioned.fill(
             child: Image.asset(
               "assets/img/Background1.png",
               fit: BoxFit.cover,
             ),
           ),
-
-          /// Main Content
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -62,58 +71,45 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  /// App Logo
                   Image.asset(
                     "assets/app_logo/applogo.png",
-                    width: 120, // Increased logo size
+                    width: 120,
                     height: 120,
                   ),
-
                   const SizedBox(height: 20),
-
-                  /// App Name
                   const Text(
                     "SKINIQ",
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 30, // Increased font size
+                      fontSize: 30,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 2.5,
                     ),
                   ),
-
                   const SizedBox(height: 10),
-
-                  /// Subtitle
                   const Text(
                     "Your Skin Our Care",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white70,
-                      fontSize: 18, // Slightly larger subtitle
+                      fontSize: 18,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
-
                   const SizedBox(height: 30),
-
-                  /// Distinct Subtitle: Let's Analyze Your Skin
                   const Text(
                     "Let's Analyze Your Skin!",
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Color.fromARGB(195, 255, 255, 255), // Changed to yellow for distinction
+                      color: Color.fromARGB(195, 255, 255, 255),
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   const SizedBox(height: 40),
-
-                  /// Display selected image
                   _image != null
                       ? CircleAvatar(
-                          radius: 80, // Increased the circle size
+                          radius: 80,
                           backgroundImage: FileImage(_image!),
                         )
                       : const CircleAvatar(
@@ -122,17 +118,13 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
                           child: Icon(
                             Icons.camera_alt,
                             color: Colors.white70,
-                            size: 60, // Enlarged icon
+                            size: 60,
                           ),
                         ),
-
                   const SizedBox(height: 30),
-
-                  /// Upload and Capture Buttons
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Distribute evenly
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      /// Capture Photo
                       Column(
                         children: [
                           IconButton(
@@ -142,8 +134,6 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
                           const Text("Capture", style: TextStyle(color: Colors.white70)),
                         ],
                       ),
-
-                      /// Upload from Gallery
                       Column(
                         children: [
                           IconButton(
@@ -155,10 +145,7 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 30),
-
-                  /// Continue Button
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
@@ -167,12 +154,15 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
                     ),
-                    onPressed: () {
+                    onPressed: () async {
                       if (_image != null) {
-                         Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const SkinDescriptionScreen()),
-                            );// Navigate to next screen
+                        await _uploadSelfie();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SkinDescriptionScreen(username: widget.username), // Pass username
+                          ),
+                        );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text("Please upload or capture a photo!")),
@@ -183,7 +173,7 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
                       "CONTINUE",
                       style: TextStyle(
                         color: Colors.black,
-                        fontSize: 20, // Larger button text
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

@@ -3,8 +3,8 @@ import 'package:skiniq/common/color_extension.dart';
 import 'package:skiniq/common_widget/round_button.dart';
 import 'package:skiniq/common_widget/round_text_field.dart';
 import 'package:skiniq/screen/login/otp_verification_page.dart';
+import 'package:skiniq/screen/login/policy_screen.dart';
 import 'package:skiniq/services/auth_service.dart';
-
 
 
 class SignUpScreen extends StatefulWidget {
@@ -29,67 +29,62 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  // sign_up_screen.dart (only the changed part)
-void _handleGetStarted() async {
-  if (!isTrue) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Please agree to the Privacy Policy")),
-    );
-    return;
-  }
-  try {
-    await AuthService.signup(
-      _usernameController.text,
-      _emailController.text,
-      _passwordController.text,
-    );
-    if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => OTPVerificationPage(email: _emailController.text),
-        ),
-      );
-    }
-  } catch (e) {
-    if (mounted) {
+  void _handleGetStarted() async {
+    if (!isTrue) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Signup failed: ${e.toString().replaceAll('Exception: ', '')}")),
+        const SnackBar(content: Text("Please agree to the Privacy Policy")),
       );
+      return;
+    }
+    try {
+      await AuthService.signup(
+        _usernameController.text,
+        _emailController.text,
+        _passwordController.text,
+      );
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OTPVerificationPage(
+              email: _emailController.text,
+              username: _usernameController.text, // Pass username
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Signup failed: ${e.toString().replaceAll('Exception: ', '')}")),
+        );
+      }
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          /// Background Image
           Positioned.fill(
             child: Image.asset(
               "assets/img/Background1.png",
               fit: BoxFit.cover,
             ),
           ),
-
-          /// Main Content
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  /// App Logo
                   Image.asset(
                     "assets/app_logo/applogo.png",
                     width: 100,
                     height: 100,
                   ),
-
                   const SizedBox(height: 15),
-
-                  /// App Name
                   Text(
                     "SKINIQ",
                     style: TextStyle(
@@ -98,10 +93,7 @@ void _handleGetStarted() async {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   const SizedBox(height: 5),
-
-                  /// Subtitle
                   Text(
                     "Your Skin Our Care",
                     textAlign: TextAlign.center,
@@ -110,10 +102,7 @@ void _handleGetStarted() async {
                       fontSize: 16,
                     ),
                   ),
-
                   const SizedBox(height: 35),
-
-                  /// Social Sign-In Buttons
                   MaterialButton(
                     onPressed: () {},
                     minWidth: double.infinity,
@@ -142,9 +131,7 @@ void _handleGetStarted() async {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 15),
-
                   MaterialButton(
                     onPressed: () {},
                     minWidth: double.infinity,
@@ -174,9 +161,7 @@ void _handleGetStarted() async {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 30),
-
                   Text(
                     "OR LOG IN WITH EMAIL",
                     textAlign: TextAlign.center,
@@ -186,29 +171,33 @@ void _handleGetStarted() async {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-
                   const SizedBox(height: 30),
-
                   RoundTextField(hintText: "Username", controller: _usernameController),
                   const SizedBox(height: 15),
                   RoundTextField(hintText: "Email address", controller: _emailController),
                   const SizedBox(height: 15),
                   RoundTextField(hintText: "Password", obscureText: true, controller: _passwordController),
-
                   const SizedBox(height: 10),
-
                   Row(
                     children: [
                       Text(
                         "I have read the ",
                         style: TextStyle(color: TColor.secondaryText, fontSize: 14),
                       ),
-                      Text(
-                        "Privacy Policy",
-                        style: TextStyle(
-                          color: TColor.primary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const PolicyScreen()),
+                          );
+                        },
+                        child: Text(
+                          "Privacy Policy",
+                          style: TextStyle(
+                            color: TColor.primary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       const Spacer(),
@@ -225,14 +214,11 @@ void _handleGetStarted() async {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 10),
-
                   RoundButton(
                     title: "GET STARTED",
                     onPressed: _handleGetStarted,
                   ),
-
                   const SizedBox(height: 30),
                 ],
               ),

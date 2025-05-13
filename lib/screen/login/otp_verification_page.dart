@@ -7,7 +7,8 @@ import 'package:skiniq/services/auth_service.dart';
 
 class OTPVerificationPage extends StatefulWidget {
   final String email;
-  const OTPVerificationPage({super.key, required this.email});
+  final String username; // Add username parameter
+  const OTPVerificationPage({super.key, required this.email, required this.username});
 
   @override
   State<OTPVerificationPage> createState() => _OTPVerificationPageState();
@@ -23,85 +24,78 @@ class _OTPVerificationPageState extends State<OTPVerificationPage> {
     super.initState();
   }
 
-  // otp_verification_page.dart (only the changed part)
-void _verifyOTP() async {
-  final otp = _otpController.text;
-  if (otp.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Please enter the OTP")),
-    );
-    return;
-  }
-  try {
-    await AuthService.verifyEmail(widget.email, otp);
-    if (mounted) {
+  void _verifyOTP() async {
+    final otp = _otpController.text;
+    if (otp.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("✅ OTP verified for ${widget.email}")),
+        const SnackBar(content: Text("Please enter the OTP")),
       );
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const UploadSelfieScreen1(),
-        ),
-      );
+      return;
     }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("❌ Verification failed: ${e.toString().replaceAll('Exception: ', '')}")),
-      );
+    try {
+      await AuthService.verifyEmail(widget.email, otp);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("✅ OTP verified for ${widget.email}")),
+        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => UploadSelfieScreen1(username: widget.username), // Pass username
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("❌ Verification failed: ${e.toString().replaceAll('Exception: ', '')}")),
+        );
+      }
     }
   }
-}
 
-void _resendOTP() async {
-  setState(() { isResending = true; });
-  try {
-    await AuthService.sendOTP(widget.email);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("✅ OTP resent to ${widget.email}")),
-      );
+  void _resendOTP() async {
+    setState(() { isResending = true; });
+    try {
+      await AuthService.sendOTP(widget.email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("✅ OTP resent to ${widget.email}")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("❌ Failed to resend OTP: ${e.toString().replaceAll('Exception: ', '')}")),
+        );
+      }
     }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("❌ Failed to resend OTP: ${e.toString().replaceAll('Exception: ', '')}")),
-      );
-    }
+    setState(() { isResending = false; });
   }
-  setState(() { isResending = false; });
-}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          /// Background Image
           Positioned.fill(
             child: Image.asset(
               "assets/img/Background1.png",
               fit: BoxFit.cover,
             ),
           ),
-
-          /// Main Content
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  /// App Logo
                   Image.asset(
                     "assets/app_logo/applogo.png",
                     width: 100,
                     height: 100,
                   ),
-
                   const SizedBox(height: 15),
-
-                  /// App Name
                   Text(
                     "SKINIQ",
                     style: TextStyle(
@@ -110,9 +104,7 @@ void _resendOTP() async {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   const SizedBox(height: 5),
-
                   Text(
                     "OTP Verification",
                     textAlign: TextAlign.center,
@@ -121,24 +113,18 @@ void _resendOTP() async {
                       fontSize: 16,
                     ),
                   ),
-
                   const SizedBox(height: 35),
-
                   RoundTextField(
                     hintText: "Enter OTP",
                     controller: _otpController,
                     keyboardType: TextInputType.number,
                   ),
-
                   const SizedBox(height: 25),
-
                   RoundButton(
                     title: "Verify OTP",
                     onPressed: _verifyOTP,
                   ),
-
                   const SizedBox(height: 15),
-
                   GestureDetector(
                     onTap: isResending ? null : _resendOTP,
                     child: Text(
@@ -150,7 +136,6 @@ void _resendOTP() async {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 30),
                 ],
               ),

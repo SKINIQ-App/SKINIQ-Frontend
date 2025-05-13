@@ -2,9 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:skiniq/screen/main_tabview/main_tabview_screen.dart';
+import 'package:skiniq/services/skin_service.dart'; // Import SkinService
 
 class SkinDescriptionScreen extends StatefulWidget {
-  const SkinDescriptionScreen({super.key});
+  final String username; // Add username parameter
+  const SkinDescriptionScreen({super.key, required this.username});
 
   @override
   State<SkinDescriptionScreen> createState() => _SkinDescriptionScreenState();
@@ -29,6 +31,44 @@ class _SkinDescriptionScreenState extends State<SkinDescriptionScreen> {
     {'question': "How often do you experience skin breakouts/irritation?", 'options': ["Never", "Rarely", "Occasionally", "Sometimes", "Often", "Constantly"]},
     {'question': "Describe your skin", 'options': [], 'isTextField': true},
   ];
+
+  Future<void> _submitQuestionnaire() async {
+    try {
+      // Prepare skin details for /skin/questionnaire
+      final skinDetails = {
+        'username': widget.username,
+        'gender': gender!,
+        'age': _parseAge(age!),
+        'skinType': skinType!,
+        'skinConcerns': skinConcerns,
+        'skinConditionDiseases': skinConditionDiseases,
+        'skinBreakouts': skinBreakouts!,
+        'skinDescription': skinDescription!,
+      };
+      await SkinService.submitQuestionnaire(skinDetails);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to submit questionnaire: ${e.toString()}")),
+      );
+    }
+  }
+
+  int _parseAge(String ageRange) {
+    switch (ageRange) {
+      case "Under 18":
+        return 16;
+      case "18-25":
+        return 22;
+      case "26-35":
+        return 30;
+      case "36-50":
+        return 40;
+      case "50+":
+        return 55;
+      default:
+        return 30;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +153,7 @@ class _SkinDescriptionScreenState extends State<SkinDescriptionScreen> {
                                           });
                                         },
                                         backgroundColor: Colors.grey[200],
-                                        selectedColor: const Color.fromARGB(255, 198, 232, 189), // Soft pink
+                                        selectedColor: const Color.fromARGB(255, 198, 232, 189),
                                         labelStyle: TextStyle(
                                           color: _isOptionSelected(option) ? Colors.white : Colors.black,
                                         ),
@@ -135,16 +175,19 @@ class _SkinDescriptionScreenState extends State<SkinDescriptionScreen> {
                                   ),
                                 const SizedBox(height: 20),
                                 ElevatedButton(
-                                  onPressed: () {
+                                  onPressed: () async {
                                     if (_isQuestionAnswered()) {
                                       if (currentIndex < questions.length - 1) {
                                         setState(() {
                                           currentIndex++;
                                         });
                                       } else {
+                                        await _submitQuestionnaire();
                                         Navigator.pushReplacement(
                                           context,
-                                          MaterialPageRoute(builder: (context) => const MainTabViewScreen()),
+                                          MaterialPageRoute(
+                                            builder: (context) => MainTabViewScreen(username: widget.username), // Pass username
+                                          ),
                                         );
                                       }
                                     } else {
@@ -156,7 +199,7 @@ class _SkinDescriptionScreenState extends State<SkinDescriptionScreen> {
                                   style: ElevatedButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                                    backgroundColor: const Color.fromARGB(255, 198, 232, 189), 
+                                    backgroundColor: const Color.fromARGB(255, 198, 232, 189),
                                   ),
                                   child: Text(
                                     currentIndex == questions.length - 1 ? "SUBMIT" : "NEXT",
@@ -184,11 +227,11 @@ class _SkinDescriptionScreenState extends State<SkinDescriptionScreen> {
       return skinDescription != null && skinDescription!.isNotEmpty;
     }
 
-    if (questions[currentIndex].containsKey('multiSelect') && questions[currentIndex]['multiSelect'] == true) {
+    if (currentIndex == 3) {
       return skinConcerns.isNotEmpty;
     }
 
-    if (questions[currentIndex].containsKey('multiSelect') && questions[currentIndex]['multiSelect'] == true) {
+    if (currentIndex == 4) {
       return skinConditionDiseases.isNotEmpty;
     }
 
@@ -205,13 +248,11 @@ class _SkinDescriptionScreenState extends State<SkinDescriptionScreen> {
   }
 
   void _updateSelection(String option, bool isMultiSelect) {
-    if (isMultiSelect) {
+    if (isMultiSelect && currentIndex == 3) {
       skinConcerns.contains(option) ? skinConcerns.remove(option) : skinConcerns.add(option);
-    } 
-    if (isMultiSelect) {
+    } else if (isMultiSelect && currentIndex == 4) {
       skinConditionDiseases.contains(option) ? skinConditionDiseases.remove(option) : skinConditionDiseases.add(option);
-    } 
-    else {
+    } else {
       if (currentIndex == 0) gender = option;
       if (currentIndex == 1) age = option;
       if (currentIndex == 2) skinType = option;

@@ -1,4 +1,3 @@
-// skin_service.dart
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -7,12 +6,12 @@ import 'api_service.dart';
 
 class SkinService {
   static Future<Map<String, dynamic>> predictSkinIssues(String symptoms) async {
-    final response = await ApiService.post('/predict_skin_issues', {'symptoms': symptoms});
+    final response = await ApiService.post('/skin/predict_skin_issues', {'symptoms': symptoms});
     return jsonDecode(response.body);
   }
 
   static Future<Map<String, dynamic>> predictSkinType(File imageFile) async {
-    var url = Uri.parse('${ApiService.baseUrl}/predict_skin_type');
+    var url = Uri.parse('${ApiService.baseUrl}/skin/analyze?username=${Uri.encodeComponent(imageFile.path)}');
     var request = http.MultipartRequest('POST', url);
     request.files.add(await http.MultipartFile.fromPath(
       'file',
@@ -26,7 +25,16 @@ class SkinService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception("Skin type prediction failed");
+      throw Exception("Skin type prediction failed: ${response.body}");
+    }
+  }
+
+  static Future<Map<String, dynamic>> submitQuestionnaire(Map<String, dynamic> skinDetails) async {
+    final response = await ApiService.post('/skin/questionnaire', skinDetails);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Questionnaire submission failed: ${response.body}");
     }
   }
 }
