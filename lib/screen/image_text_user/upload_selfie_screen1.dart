@@ -62,7 +62,7 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
     int orientation = 1;
     if (exif.containsKey('Orientation')) {
       final orientationValue = exif['Orientation'];
-      if (orientationValue != null && orientationValue.values.isNotEmpty) {
+      if (orientationValue.values.isNotEmpty) {
         orientation = orientationValue.values.first as int? ?? 1;
       }
     }
