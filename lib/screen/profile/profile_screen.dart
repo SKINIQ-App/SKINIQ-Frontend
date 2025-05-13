@@ -1,14 +1,13 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:camera/camera.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:skiniq/services/profile_service.dart'; // Import ProfileService
+import 'package:flutter_exif_rotation/flutter_exif_rotation.dart';
+import 'package:skiniq/services/profile_service.dart';
 
 class ProfileScreen extends StatefulWidget {
-  final String username; // Add username parameter
+  final String username;
   const ProfileScreen({super.key, required this.username});
 
   @override
@@ -41,6 +40,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         SnackBar(content: Text("Failed to load profile: ${e.toString()}")),
       );
     }
+  }
+
+  Future<File> _fixImageRotation(File imageFile) async {
+    final rotatedImage = await FlutterExifRotation.rotateImage(path: imageFile.path);
+    return rotatedImage;
   }
 
   void _showImageSourceActionSheet(BuildContext context) {
@@ -80,9 +84,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _pickImage() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
     if (result != null) {
+      File imageFile = File(result.files.single.path!);
+      imageFile = await _fixImageRotation(imageFile);
       setState(() {
-        _profileImage = File(result.files.single.path!);
+        _profileImage = imageFile;
       });
+      await _uploadProfilePicture(imageFile);
     }
   }
 
@@ -90,15 +97,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final cameras = await availableCameras();
     final firstCamera = cameras.first;
 
-    final cameraController = CameraController(firstCamera, ResolutionPreset.medium);
-    await cameraController.initialize();
+    final File? capturedImage = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CameraPreviewScreen(
+          camera: firstCamera,
+          onImageCaptured: (File image) {},
+        ),
+      ),
+    );
 
-    final image = await cameraController.takePicture();
-    setState(() {
-      _profileImage = File(image.path);
-    });
+    if (capturedImage != null) {
+      File imageFile = await _fixImageRotation(capturedImage);
+      setState(() {
+        _profileImage = imageFile;
+      });
+      await _uploadProfilePicture(imageFile);
+    }
+  }
 
-    await cameraController.dispose();
+  Future<void> _uploadProfilePicture(File image) async {
+    try {
+      await ProfileService.updateProfilePicture(widget.username, image);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to upload profile picture: ${e.toString()}")),
+      );
+    }
   }
 
   @override
@@ -106,14 +131,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          Image.asset(
-            "assets/img/Background1.png",
-            width: double.infinity,
-            height: double.infinity,
-            fit: BoxFit.cover,
+          Positioned.fill(
+            child: Image.asset(
+              "assets/img/Background1.png",
+              fit: BoxFit.cover,
+            ),
           ),
           SafeArea(
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -130,6 +155,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Colors.orangeAccent,
                           _userProfile?['recommended_routine'] ?? [],
                         ),
+                        const SizedBox(height: 20),
                       ],
                     ),
             ),
@@ -149,6 +175,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontSize: 26,
             fontWeight: FontWeight.bold,
             color: Colors.white,
+            shadows: [
+              Shadow(
+                color: Colors.black26,
+                offset: Offset(1, 1),
+                blurRadius: 3,
+              ),
+            ],
           ),
         ),
         Row(
@@ -159,10 +192,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             IconButton(
               icon: const Icon(FontAwesomeIcons.rightFromBracket, color: Colors.white),
-              onPressed: () {},
+              onPressed: () {
+                // Implement logout functionality
+              },
             ),
           ],
-        )
+        ),
       ],
     );
   }
@@ -211,8 +246,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 18),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withOpacity(0.95),
               borderRadius: BorderRadius.circular(20),
+              boxShadow: const [
+                BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+              ],
             ),
             child: Text(
               "Skin Type: ${_userProfile?['predicted_skin_type'] ?? 'Unknown'}",
@@ -233,8 +271,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
+        color: Colors.white.withOpacity(0.95),
         borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
+          BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,6 +289,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
+                  color: Color(0xFF27AE60),
                 ),
               ),
             ],
@@ -267,13 +309,105 @@ class _ProfileScreenState extends State<ProfileScreen> {
               : Column(
                   children: routine.map((step) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
-                      "• $step",
-                      style: const TextStyle(fontSize: 16),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.check_circle,
+                          color: Color(0xFF6C9478),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            step,
+                            style: const TextStyle(fontSize: 16, color: Colors.black87),
+                          ),
+                        ),
+                      ],
                     ),
                   )).toList(),
                 ),
         ],
+      ),
+    );
+  }
+}
+
+class CameraPreviewScreen extends StatefulWidget {
+  final CameraDescription camera;
+  final Function(File) onImageCaptured;
+
+  const CameraPreviewScreen({
+    super.key,
+    required this.camera,
+    required this.onImageCaptured,
+  });
+
+  @override
+  State<CameraPreviewScreen> createState() => _CameraPreviewScreenState();
+}
+
+class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
+  late CameraController _controller;
+  late Future<void> _initializeControllerFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = CameraController(
+      widget.camera,
+      ResolutionPreset.medium,
+    );
+    _initializeControllerFuture = _controller.initialize();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _captureImage() async {
+    try {
+      await _initializeControllerFuture;
+      final image = await _controller.takePicture();
+      widget.onImageCaptured(File(image.path));
+      Navigator.pop(context, File(image.path));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to capture image: ${e.toString()}")),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: FutureBuilder<void>(
+        future: _initializeControllerFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return Stack(
+              children: [
+                CameraPreview(_controller),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: FloatingActionButton(
+                      onPressed: _captureImage,
+                      backgroundColor: const Color.fromARGB(255, 198, 232, 189),
+                      child: const Icon(Icons.camera, color: Colors.black),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          } else {
+            return const Center(child: CircularProgressIndicator());
+          }
+        },
       ),
     );
   }

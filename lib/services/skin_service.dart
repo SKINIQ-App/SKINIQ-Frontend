@@ -1,41 +1,45 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
-import 'package:skiniq/services/api_service.dart';
+import 'dart:io';
+import 'dart:convert';
 
 class SkinService {
-  static Future<Map<String, dynamic>> predictSkinType(String username, File image) async {
+  static const String baseUrl = 'https://skiniq-backend.onrender.com';
+
+  static Future<void> predictSkinType(String username, File image) async {
     try {
-      var request = http.MultipartRequest('POST', Uri.parse('${ApiService.baseUrl}/skin/analyze?username=$username'));
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'file',
-          image.path,
-          contentType: MediaType('image', 'jpeg'),
-        ),
-      );
-
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Failed to analyze skin: ${response.body}');
+      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/skin/analyze?username=$username'));
+      request.files.add(await http.MultipartFile.fromPath('image', image.path));
+      var response = await request.send();
+      if (response.statusCode != 200) {
+        throw Exception('Failed to predict skin type');
       }
     } catch (e) {
-      throw Exception('Error during skin analysis: $e');
+      throw Exception('Error predicting skin type: $e');
     }
   }
 
-  static Future<Map<String, dynamic>> submitQuestionnaire(Map<String, dynamic> skinDetails) async {
+  static Future<Map<String, dynamic>> getUserProfile(String username) async {
     try {
-      final response = await ApiService.post('/skin/questionnaire', skinDetails);
+      final response = await http.get(Uri.parse('$baseUrl/profile/$username'));
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        throw Exception('Failed to submit questionnaire: ${response.body}');
+        throw Exception('Failed to fetch user profile');
+      }
+    } catch (e) {
+      throw Exception('Error fetching user profile: $e');
+    }
+  }
+
+  static Future<void> submitQuestionnaire(Map<String, dynamic> skinDetails) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/skin/questionnaire'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(skinDetails),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to submit questionnaire');
       }
     } catch (e) {
       throw Exception('Error submitting questionnaire: $e');

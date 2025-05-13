@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:file_picker/file_picker.dart';
 import 'package:camera/camera.dart';
-import 'package:image/image.dart' as img; // For image rotation
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter_exif_rotation/flutter_exif_rotation.dart';
 import 'package:skiniq/screen/image_text_user/skin_description_screen.dart';
-import 'package:skiniq/services/skin_service.dart'; // Import SkinService
+import 'package:skiniq/services/skin_service.dart';
 
 class UploadSelfieScreen1 extends StatefulWidget {
   final String username;
@@ -48,39 +48,15 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
   }
 
   Future<File> _fixImageRotation(File imageFile) async {
-    final imageBytes = await imageFile.readAsBytes();
-    final image = img.decodeImage(imageBytes)!;
-
-    // Check EXIF orientation and rotate if needed
-    final exif = image.exif;
-    final orientationTag = exif.getTag(0x0112); // Get the orientation tag
-    final orientation = orientationTag?.toInt() ?? 1; // Use toInt() to get the value, default to 1 if null
-    img.Image rotatedImage = image;
-
-    switch (orientation) {
-      case 3:
-        rotatedImage = img.copyRotate(image, angle: 180);
-        break;
-      case 6:
-        rotatedImage = img.copyRotate(image, angle: 90);
-        break;
-      case 8:
-        rotatedImage = img.copyRotate(image, angle: -90);
-        break;
-      default:
-        break;
-    }
-
-    // Save the rotated image
-    final rotatedFile = File(imageFile.path)..writeAsBytesSync(img.encodeJpg(rotatedImage));
-    return rotatedFile;
+    final rotatedImage = await FlutterExifRotation.rotateImage(path: imageFile.path);
+    return rotatedImage;
   }
 
   Future<void> _pickImage() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.image);
     if (result != null) {
       File imageFile = File(result.files.single.path!);
-      imageFile = await _fixImageRotation(imageFile); // Fix rotation
+      imageFile = await _fixImageRotation(imageFile);
       setState(() {
         _image = imageFile;
       });
@@ -90,20 +66,22 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
   Future<void> _captureImage() async {
     if (selectedCamera == null) return;
 
-    final cameraController = CameraController(selectedCamera!, ResolutionPreset.medium);
-    await cameraController.initialize();
+    final File? capturedImage = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CameraPreviewScreen(
+          camera: selectedCamera!,
+          onImageCaptured: (File image) {},
+        ),
+      ),
+    );
 
-    if (!mounted) return;
-
-    final image = await cameraController.takePicture();
-    File imageFile = File(image.path);
-    imageFile = await _fixImageRotation(imageFile); // Fix rotation
-
-    setState(() {
-      _image = imageFile;
-    });
-
-    await cameraController.dispose();
+    if (capturedImage != null) {
+      File imageFile = await _fixImageRotation(capturedImage);
+      setState(() {
+        _image = imageFile;
+      });
+    }
   }
 
   Future<void> _uploadSelfie() async {
@@ -113,6 +91,12 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
     });
     try {
       await SkinService.predictSkinType(widget.username, _image!);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SkinDescriptionScreen(username: widget.username),
+        ),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to analyze skin: ${e.toString()}")),
@@ -135,9 +119,9 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
               fit: BoxFit.cover,
             ),
           ),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -155,6 +139,13 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
                       fontSize: 30,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 2.5,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black26,
+                          offset: Offset(1, 1),
+                          blurRadius: 3,
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -232,7 +223,7 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
                   const SizedBox(height: 30),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
+                      backgroundColor: const Color.fromARGB(255, 198, 232, 189),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
@@ -243,12 +234,6 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
                         : () async {
                             if (_image != null) {
                               await _uploadSelfie();
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => SkinDescriptionScreen(username: widget.username),
-                                ),
-                              );
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text("Please upload or capture a photo!")),
@@ -266,11 +251,91 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
                             ),
                           ),
                   ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class CameraPreviewScreen extends StatefulWidget {
+  final CameraDescription camera;
+  final Function(File) onImageCaptured;
+
+  const CameraPreviewScreen({
+    super.key,
+    required this.camera,
+    required this.onImageCaptured,
+  });
+
+  @override
+  State<CameraPreviewScreen> createState() => _CameraPreviewScreenState();
+}
+
+class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
+  late CameraController _controller;
+  late Future<void> _initializeControllerFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = CameraController(
+      widget.camera,
+      ResolutionPreset.medium,
+    );
+    _initializeControllerFuture = _controller.initialize();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _captureImage() async {
+    try {
+      await _initializeControllerFuture;
+      final image = await _controller.takePicture();
+      widget.onImageCaptured(File(image.path));
+      Navigator.pop(context, File(image.path));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to capture image: ${e.toString()}")),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: FutureBuilder<void>(
+        future: _initializeControllerFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return Stack(
+              children: [
+                CameraPreview(_controller),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: FloatingActionButton(
+                      onPressed: _captureImage,
+                      backgroundColor: const Color.fromARGB(255, 198, 232, 189),
+                      child: const Icon(Icons.camera, color: Colors.black),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          } else {
+            return const Center(child: CircularProgressIndicator());
+          }
+        },
       ),
     );
   }

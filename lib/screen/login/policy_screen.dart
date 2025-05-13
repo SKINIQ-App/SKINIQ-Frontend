@@ -16,7 +16,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..loadRequest(Uri.parse('https://skiniq-backend.onrender.com/static/privacy_policy.html'));
+      ..loadRequest(Uri.parse('https://skiniq-backend.onrender.com/static/privacy policy.html'));
   }
 
   @override
