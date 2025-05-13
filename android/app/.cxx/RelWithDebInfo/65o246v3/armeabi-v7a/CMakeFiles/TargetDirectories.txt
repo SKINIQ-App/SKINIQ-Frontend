@@ -1,0 +1,2 @@
+C:/Users/Khushi/OneDrive/Desktop/meditation/android/app/.cxx/RelWithDebInfo/65o246v3/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/Khushi/OneDrive/Desktop/meditation/android/app/.cxx/RelWithDebInfo/65o246v3/armeabi-v7a/CMakeFiles/rebuild_cache.dir
