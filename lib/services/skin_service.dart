@@ -7,11 +7,13 @@ class SkinService {
 
   static Future<void> predictSkinType(String username, File image) async {
     try {
-      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/skin/analyze?username=$username'));
+      final trimmedUsername = username.trim();
+      print('Sending skin analysis request for username: $trimmedUsername, image path: ${image.path}');
+      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/skin/analyze?username=$trimmedUsername'));
       request.files.add(await http.MultipartFile.fromPath('image', image.path));
       var response = await request.send();
       if (response.statusCode != 200) {
-        throw Exception('Failed to predict skin type');
+        throw Exception('Failed to predict skin type: ${response.statusCode}');
       }
     } catch (e) {
       throw Exception('Error predicting skin type: $e');

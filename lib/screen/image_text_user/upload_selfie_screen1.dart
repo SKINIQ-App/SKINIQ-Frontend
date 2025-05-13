@@ -70,7 +70,7 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
       context,
       MaterialPageRoute(
         builder: (context) => CameraPreviewScreen(
-          camera: selectedCamera!,
+          initialCamera: selectedCamera!,
           onImageCaptured: (File image) {},
         ),
       ),
@@ -90,6 +90,7 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
       _isUploading = true;
     });
     try {
+      print('Uploading selfie for username: ${widget.username}'); // Debug print
       await SkinService.predictSkinType(widget.username, _image!);
       Navigator.push(
         context,
@@ -117,142 +118,151 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
             child: Image.asset(
               "assets/img/Background1.png",
               fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
             ),
           ),
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Image.asset(
-                    "assets/app_logo/applogo.png",
-                    width: 120,
-                    height: 120,
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    "SKINIQ",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2.5,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black26,
-                          offset: Offset(1, 1),
-                          blurRadius: 3,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    "Your Skin Our Care",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 18,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  const Text(
-                    "Let's Analyze Your Skin!",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color.fromARGB(195, 255, 255, 255),
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  _image != null
-                      ? CircleAvatar(
-                          radius: 80,
-                          backgroundImage: FileImage(_image!),
-                        )
-                      : const CircleAvatar(
-                          radius: 80,
-                          backgroundColor: Colors.white24,
-                          child: Icon(
-                            Icons.camera_alt,
-                            color: Colors.white70,
-                            size: 60,
-                          ),
-                        ),
-                  const SizedBox(height: 30),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Column(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.camera, color: Colors.white, size: 45),
-                            onPressed: _captureImage,
-                          ),
-                          const Text("Capture", style: TextStyle(color: Colors.white70)),
-                        ],
+                      Image.asset(
+                        "assets/app_logo/applogo.png",
+                        width: 120,
+                        height: 120,
                       ),
-                      Column(
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              isFrontCamera ? Icons.camera_rear : Icons.camera_front,
-                              color: Colors.white,
-                              size: 45,
+                      const SizedBox(height: 20),
+                      const Text(
+                        "SKINIQ",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2.5,
+                          shadows: [
+                            Shadow(
+                              color: Colors.black26,
+                              offset: Offset(1, 1),
+                              blurRadius: 3,
                             ),
-                            onPressed: _switchCamera,
-                          ),
-                          const Text("Switch", style: TextStyle(color: Colors.white70)),
-                        ],
+                          ],
+                        ),
                       ),
-                      Column(
+                      const SizedBox(height: 10),
+                      const Text(
+                        "Your Skin Our Care",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 18,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      const Text(
+                        "Let's Analyze Your Skin!",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Color.fromARGB(195, 255, 255, 255),
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      _image != null
+                          ? CircleAvatar(
+                              radius: 80,
+                              backgroundImage: FileImage(_image!),
+                            )
+                          : const CircleAvatar(
+                              radius: 80,
+                              backgroundColor: Colors.white24,
+                              child: Icon(
+                                Icons.camera_alt,
+                                color: Colors.white70,
+                                size: 60,
+                              ),
+                            ),
+                      const SizedBox(height: 30),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.image, color: Colors.white, size: 45),
-                            onPressed: _pickImage,
+                          Column(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.camera, color: Colors.white, size: 45),
+                                onPressed: _captureImage,
+                              ),
+                              const Text("Capture", style: TextStyle(color: Colors.white70)),
+                            ],
                           ),
-                          const Text("Upload", style: TextStyle(color: Colors.white70)),
+                          Column(
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  isFrontCamera ? Icons.camera_rear : Icons.camera_front,
+                                  color: Colors.white,
+                                  size: 45,
+                                ),
+                                onPressed: _switchCamera,
+                              ),
+                              const Text("Switch", style: TextStyle(color: Colors.white70)),
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.image, color: Colors.white, size: 45),
+                                onPressed: _pickImage,
+                              ),
+                              const Text("Upload", style: TextStyle(color: Colors.white70)),
+                            ],
+                          ),
                         ],
                       ),
+                      const SizedBox(height: 30),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color.fromARGB(255, 198, 232, 189),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                        ),
+                        onPressed: _isUploading
+                            ? null
+                            : () async {
+                                if (_image != null) {
+                                  await _uploadSelfie();
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text("Please upload or capture a photo!")),
+                                  );
+                                }
+                              },
+                        child: _isUploading
+                            ? const CircularProgressIndicator(color: Colors.black)
+                            : const Text(
+                                "CONTINUE",
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
+                      const SizedBox(height: 20),
                     ],
                   ),
-                  const SizedBox(height: 30),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 198, 232, 189),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-                    ),
-                    onPressed: _isUploading
-                        ? null
-                        : () async {
-                            if (_image != null) {
-                              await _uploadSelfie();
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text("Please upload or capture a photo!")),
-                              );
-                            }
-                          },
-                    child: _isUploading
-                        ? const CircularProgressIndicator(color: Colors.black)
-                        : const Text(
-                            "CONTINUE",
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
+                ),
               ),
             ),
           ),
@@ -263,12 +273,12 @@ class _UploadSelfieScreenState extends State<UploadSelfieScreen1> {
 }
 
 class CameraPreviewScreen extends StatefulWidget {
-  final CameraDescription camera;
+  final CameraDescription initialCamera;
   final Function(File) onImageCaptured;
 
   const CameraPreviewScreen({
     super.key,
-    required this.camera,
+    required this.initialCamera,
     required this.onImageCaptured,
   });
 
@@ -279,15 +289,36 @@ class CameraPreviewScreen extends StatefulWidget {
 class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
   late CameraController _controller;
   late Future<void> _initializeControllerFuture;
+  late List<CameraDescription> _cameras;
+  late int _selectedCameraIndex;
 
   @override
   void initState() {
     super.initState();
+    _initializeCameras();
+  }
+
+  Future<void> _initializeCameras() async {
+    _cameras = await availableCameras();
+    _selectedCameraIndex = _cameras.indexWhere((camera) => camera == widget.initialCamera);
+    if (_selectedCameraIndex == -1) _selectedCameraIndex = 0;
     _controller = CameraController(
-      widget.camera,
+      _cameras[_selectedCameraIndex],
       ResolutionPreset.medium,
     );
     _initializeControllerFuture = _controller.initialize();
+    setState(() {});
+  }
+
+  Future<void> _switchCamera() async {
+    _selectedCameraIndex = (_selectedCameraIndex + 1) % _cameras.length;
+    await _controller.dispose();
+    _controller = CameraController(
+      _cameras[_selectedCameraIndex],
+      ResolutionPreset.medium,
+    );
+    _initializeControllerFuture = _controller.initialize();
+    setState(() {});
   }
 
   @override
@@ -323,10 +354,21 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
                   alignment: Alignment.bottomCenter,
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
-                    child: FloatingActionButton(
-                      onPressed: _captureImage,
-                      backgroundColor: const Color.fromARGB(255, 198, 232, 189),
-                      child: const Icon(Icons.camera, color: Colors.black),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        FloatingActionButton(
+                          onPressed: _switchCamera,
+                          backgroundColor: const Color.fromARGB(255, 198, 232, 189),
+                          child: const Icon(Icons.flip_camera_ios, color: Colors.black),
+                        ),
+                        const SizedBox(width: 20),
+                        FloatingActionButton(
+                          onPressed: _captureImage,
+                          backgroundColor: const Color.fromARGB(255, 198, 232, 189),
+                          child: const Icon(Icons.camera, color: Colors.black),
+                        ),
+                      ],
                     ),
                   ),
                 ),
