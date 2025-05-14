@@ -12,12 +12,12 @@ class DiaryService {
     String date,
   ) async {
     try {
-      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/diary_entry')); // Changed to match backend
+      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/diary/diary_entry'));
       request.fields['username'] = username;
       request.fields['date'] = date;
       request.fields['text'] = text;
       for (var image in images) {
-        request.files.add(await http.MultipartFile.fromPath('file', image.path)); // Changed 'photos' to 'file'
+        request.files.add(await http.MultipartFile.fromPath('file', image.path));
       }
 
       var response = await request.send();
@@ -32,10 +32,10 @@ class DiaryService {
 
   static Future<List<Map<String, dynamic>>> fetchDiaryEntries(String username) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/diary/entries/$username'));
+      final response = await http.get(Uri.parse('$baseUrl/diary/entries?username=$username'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['diary_entries']);
+        return List<Map<String, dynamic>>.from(data);
       } else {
         throw Exception('Failed to fetch diary entries: ${response.statusCode}');
       }

@@ -10,10 +10,11 @@ class SkinService {
       final trimmedUsername = username.trim();
       print('Sending skin analysis request for username: $trimmedUsername, image path: ${image.path}');
       var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/skin/analyze?username=$trimmedUsername'));
-      request.files.add(await http.MultipartFile.fromPath('image', image.path));
+      request.files.add(await http.MultipartFile.fromPath('file', image.path)); // Changed 'image' to 'file' to match backend
       var response = await request.send();
       if (response.statusCode != 200) {
-        throw Exception('Failed to predict skin type: ${response.statusCode}');
+        final responseBody = await response.stream.bytesToString();
+        throw Exception('Failed to predict skin type: ${response.statusCode}, $responseBody');
       }
     } catch (e) {
       throw Exception('Error predicting skin type: $e');
@@ -30,6 +31,20 @@ class SkinService {
       }
     } catch (e) {
       throw Exception('Error fetching user profile: $e');
+    }
+  }
+
+  static Future<void> updateProfileImage(String username, File image) async {
+    try {
+      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/auth/update-profile-image/$username'));
+      request.files.add(await http.MultipartFile.fromPath('file', image.path));
+      var response = await request.send();
+      if (response.statusCode != 200) {
+        final responseBody = await response.stream.bytesToString();
+        throw Exception('Failed to update profile image: ${response.statusCode}, $responseBody');
+      }
+    } catch (e) {
+      throw Exception('Error updating profile image: $e');
     }
   }
 
